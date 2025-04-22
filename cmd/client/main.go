@@ -18,6 +18,13 @@ func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) {
 	}
 }
 
+func handlerMove(gs *gamelogic.GameState) func(gamelogic.ArmyMove) {
+	return func(mv gamelogic.ArmyMove) {
+		defer fmt.Print("> ")
+		gs.HandleMove(mv)
+	}
+}
+
 func main() {
 	fmt.Println("Starting Peril client...")
 	url := "amqp://guest:guest@localhost:5672/"
@@ -27,6 +34,11 @@ func main() {
 	}
 	defer c.Close()
 	fmt.Println("Connection successful")
+
+	channel, err := c.Channel()
+	if err != nil {
+		log.Fatalf("error in creating channel, %s", err)
+	}
 
 	username, err := gamelogic.ClientWelcome()
 	if err != nil {
@@ -43,7 +55,18 @@ func main() {
 		pubsub.Transient,
 		handlerPause(gameState),
 	)
+	if err != nil {
+		log.Fatalf("cannot subscribe to queue, %s", err)
+	}
 
+	err = pubsub.SubscribeJSON(
+		c,
+		routing.ExchangePerilTopic,
+		routing.ArmyMovesPrefix+gameState.GetUsername(),
+		routing.ArmyMovesPrefix+".*",
+		pubsub.Transient,
+		handlerMove(gameState),
+	)
 	if err != nil {
 		log.Fatalf("cannot subscribe to queue, %s", err)
 	}
@@ -63,7 +86,16 @@ func main() {
 			gamelogic.PrintQuit()
 			return
 		case "move":
-			_, err = gameState.CommandMove(input)
+			move, err := gameState.CommandMove(input)
+			if err != nil {
+				fmt.Printf("%s\n", err)
+			}
+			err = pubsub.PublishJSON(
+				channel,
+				routing.ExchangePerilTopic,
+				routing.ArmyMovesPrefix+gameState.GetUsername(),
+				move,
+			)
 			if err != nil {
 				fmt.Printf("%s\n", err)
 			}
