@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -26,6 +24,11 @@ func main() {
 	channel, err := c.Channel()
 	if err != nil {
 		log.Fatalf("error in creating channel, %s", err)
+	}
+
+	_, _, err = pubsub.DeclareAndBind(c, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug+".*", pubsub.Durable)
+	if err != nil {
+		log.Fatalf("Error creating and binding queue, %s", err)
 	}
 
 	gamelogic.PrintServerHelp()
@@ -54,13 +57,8 @@ func main() {
 			fmt.Println("Sending resume message")
 		case "quit":
 			fmt.Println("Exiting game")
-			break
+			return
 		}
 	}
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
-	fmt.Println("Program is shutting down. Closing connections.")
 
 }

@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -27,8 +25,36 @@ func main() {
 	_, _, err = pubsub.DeclareAndBind(c, routing.ExchangePerilDirect,
 		routing.PauseKey+"."+username, routing.PauseKey, pubsub.Transient)
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
-	fmt.Println("Program is shutting down. Closing connections.")
+	gameState := gamelogic.NewGameState(username)
+
+	for {
+		input := gamelogic.GetInput()
+		if len(input) == 0 {
+			continue
+		}
+		switch input[0] {
+		case "spawn":
+			err = gameState.CommandSpawn(input)
+			if err != nil {
+				fmt.Printf("%s\n", err)
+			}
+		case "quit":
+			gamelogic.PrintQuit()
+			return
+		case "move":
+			_, err = gameState.CommandMove(input)
+			if err != nil {
+				fmt.Printf("%s\n", err)
+			}
+		case "status":
+			gameState.CommandStatus()
+		case "help":
+			gamelogic.PrintClientHelp()
+		case "spam":
+			fmt.Printf("Spamming not allowed yet!")
+		default:
+			fmt.Printf("Command not found! Try <help>\n")
+		}
+	}
+
 }
