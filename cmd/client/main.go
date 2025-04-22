@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
+	"github.com/joho/godotenv"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -26,8 +28,11 @@ func handlerMove(gs *gamelogic.GameState) func(gamelogic.ArmyMove) {
 }
 
 func main() {
+	godotenv.Load()
+
 	fmt.Println("Starting Peril client...")
-	url := "amqp://guest:guest@localhost:5672/"
+
+	url := os.Getenv("AMQP_URL")
 	c, err := amqp.Dial(url)
 	if err != nil {
 		log.Fatalf("connection to amqp failed, %s", err)
@@ -62,7 +67,7 @@ func main() {
 	err = pubsub.SubscribeJSON(
 		c,
 		routing.ExchangePerilTopic,
-		routing.ArmyMovesPrefix+gameState.GetUsername(),
+		routing.ArmyMovesPrefix+"."+gameState.GetUsername(),
 		routing.ArmyMovesPrefix+".*",
 		pubsub.Transient,
 		handlerMove(gameState),
@@ -93,7 +98,7 @@ func main() {
 			err = pubsub.PublishJSON(
 				channel,
 				routing.ExchangePerilTopic,
-				routing.ArmyMovesPrefix+gameState.GetUsername(),
+				routing.ArmyMovesPrefix+"."+gameState.GetUsername(),
 				move,
 			)
 			if err != nil {

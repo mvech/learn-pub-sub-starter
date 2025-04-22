@@ -3,16 +3,20 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
+	"github.com/joho/godotenv"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
 	fmt.Println("Starting Peril server...")
-	url := "amqp://guest:guest@localhost:5672/"
+
+	godotenv.Load()
+	url := os.Getenv("AMQP_URL")
 	c, err := amqp.Dial(url)
 	if err != nil {
 		log.Fatalf("connection to amqp failed, %s", err)
